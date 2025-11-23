@@ -16,6 +16,7 @@ find_package(Magnum CONFIG REQUIRED
     Primitives
     Shaders
     Trade
+    WglContext        
 )
 
 # -----------------------------
@@ -37,6 +38,7 @@ target_link_libraries(Bolt PRIVATE
     Magnum::Trade
     Magnum::Primitives
     Magnum::Shaders
+    Magnum::GLContext
 )
 
 # -----------------------------

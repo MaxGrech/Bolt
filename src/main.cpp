@@ -9,6 +9,26 @@
 
 //~ // COMPILE SDL3 as a STATIC lib
 
+
+#include <Corrade/Utility/Arguments.h>
+
+#include <Magnum/GL/DefaultFramebuffer.h>
+#include <Magnum/GL/Renderer.h>
+#include <Magnum/GL/Mesh.h>
+//
+#include <Magnum/Math/Color.h>
+#include <Magnum/Math/Matrix4.h>
+#include <Magnum/Math/Vector3.h>
+
+#include <Magnum/Shaders/Phong.h>
+#include <Magnum/Primitives/Cube.h>
+#include <Magnum/MeshTools/Compile.h>
+#include <Magnum/Trade/MeshData.h>
+
+
+#include <Magnum/Platform/GLContext.h>
+
+
 #include "imgui.h"
 #include "imgui_impl_sdl3.h"
 #include "imgui_impl_opengl3.h"
@@ -28,7 +48,7 @@
 
 void main_loop()
 {
-    bool show_demo_window = true;
+    /*bool show_demo_window = true;
     if (show_demo_window)
         ImGui::ShowDemoWindow(&show_demo_window);
     
@@ -65,8 +85,13 @@ void main_loop()
         static float col[3]{};
         ImGui::ColorPicker3("Colour Edit", col);
     }
-    ImGui::End();
+    ImGui::End();*/
 }
+
+using namespace Magnum;
+
+static Matrix4 gProjection;
+static Matrix4 gTransformation;
 
 // Main code
 int main(int, char**)
@@ -130,9 +155,33 @@ int main(int, char**)
     }
 
     SDL_GL_MakeCurrent(window, gl_context);
+
+    Platform::GLContext context{};
+    //context = Platform::GLContext();        // now Magnum knows the GL context is current
+
+
     SDL_GL_SetSwapInterval(1); // Enable vsync
     SDL_SetWindowPosition(window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
     SDL_ShowWindow(window);
+
+    GL::Mesh cubeMesh = MeshTools::compile(Primitives::cubeSolid());
+    Shaders::Phong cubeShader;
+
+    // --- Create a cube mesh ---
+    cubeShader
+        .setDiffuseColor(Magnum::Color4(0x66ccff))
+        .setSpecularColor(Magnum::Color4(0x000000))  // <= disables specular
+        .setShininess(1.0f);
+
+    gTransformation =
+        Matrix4::rotationY(Magnum::Deg(0.0)) *
+        Matrix4::rotationX(Magnum::Deg(0.0)) *
+        Matrix4::translation(Vector3::zAxis(-10.0f));
+
+    float aspect = 1280.0f / 800.0f;
+    gProjection = Matrix4::perspectiveProjection(
+        Magnum::Deg(60.0), aspect, 0.01f, 100.0f
+    );
 
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
@@ -217,12 +266,59 @@ int main(int, char**)
         // 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
         main_loop();
         
-        // Rendering
-        ImGui::Render();
-        glViewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
+
+
+        int fbWidth, fbHeight;
+        SDL_GetWindowSizeInPixels(window, &fbWidth, &fbHeight);
+
+        // Set Magnum framebuffer viewport
+        GL::defaultFramebuffer.setViewport({ {}, {fbWidth, fbHeight} });
+
+        // Set OpenGL viewport to match
+        glViewport(0, 0, fbWidth, fbHeight);
+
         glClearColor(clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w);
         glClear(GL_COLOR_BUFFER_BIT);
+        // --- Clear using Magnum ---
+        GL::defaultFramebuffer.clear(GL::FramebufferClear::Color |
+            GL::FramebufferClear::Depth);
+
+        // --- Render 3D Cube ---
+        GL::Renderer::enable(GL::Renderer::Feature::DepthTest);
+        GL::Renderer::enable(GL::Renderer::Feature::FaceCulling);
+
+        Matrix4 base =
+            Matrix4::rotationX(Magnum::Deg(0.0f)) *
+            Matrix4::translation(Vector3::zAxis(-10.0f));
+
+        static float cube_angle_y = 0;
+        static float cube_angle_x = 0;
+        static float cube_angle_zoom = 1.0f;
+        ImGui::Begin("Cube Options");
+        ImGui::SliderFloat("Rotation Y", &cube_angle_y, 0, 360);
+        ImGui::SliderFloat("Rotation X", &cube_angle_x, 0, 360);
+        ImGui::SliderFloat("Zoom", &cube_angle_zoom, 0, 5.0f);
+        ImGui::End();
+
+        Matrix4 spinningTransform =
+            base
+            * Matrix4::rotationY(Magnum::Deg(cube_angle_y))
+            * Matrix4::rotationX(Magnum::Deg(cube_angle_x))
+            * Matrix4::scaling(Magnum::Vector3(cube_angle_zoom));
+
+        cubeShader
+            .setDiffuseColor(Magnum::Color4(0x66ccff))
+            .setLightPosition({ 3.0f, 5.0f, 8.0f })
+            .setTransformationMatrix(spinningTransform)
+            .setProjectionMatrix(gProjection)
+            .draw(cubeMesh);
+
+        // Rendering
+        ImGui::Render();
+
+        // --- Now draw ImGui on top ---
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
         SDL_GL_SwapWindow(window);
     }
 #ifdef __EMSCRIPTEN__

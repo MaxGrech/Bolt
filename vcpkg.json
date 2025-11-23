@@ -18,7 +18,8 @@
                 "gl",
                 "trade",
                 "primitives",
-                "shaders"
+                "shaders",
+                "wglcontext"
             ]
         }
     ],
