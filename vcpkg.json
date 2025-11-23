@@ -1,0 +1,26 @@
+{
+    "name": "bolt",
+    "version": "0.1.0",
+    "dependencies": [
+        {
+            "name": "sdl3"
+        },
+        {
+            "name": "imgui",
+            "features": [
+                "sdl3-binding",
+                "opengl3-binding"
+            ]
+        },
+        {
+            "name": "magnum",
+            "features": [
+                "gl",
+                "trade",
+                "primitives",
+                "shaders"
+            ]
+        }
+    ],
+    "builtin-baseline": "3bbc2809d3625cb83a0d7cbd413bd6ad769d46d4"
+}
