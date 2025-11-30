@@ -1,33 +1,4 @@
-// Dear ImGui: standalone example application for SDL3 + OpenGL
-// (SDL is a cross-platform general purpose library for handling windows, inputs, OpenGL/Vulkan/Metal graphics context creation, etc.)
-
-// Learn about Dear ImGui:
-// - FAQ                  https://dearimgui.com/faq
-// - Getting Started      https://dearimgui.com/getting-started
-// - Documentation        https://dearimgui.com/docs (same as your local docs/ folder).
-// - Introduction, links and more at the top of imgui.cpp
-
-//~ // COMPILE SDL3 as a STATIC lib
-
-
-#include <Corrade/Utility/Arguments.h>
-
-#include <Magnum/GL/DefaultFramebuffer.h>
-#include <Magnum/GL/Renderer.h>
-#include <Magnum/GL/Mesh.h>
-//
-#include <Magnum/Math/Color.h>
-#include <Magnum/Math/Matrix4.h>
-#include <Magnum/Math/Vector3.h>
-
-#include <Magnum/Shaders/Phong.h>
-#include <Magnum/Primitives/Cube.h>
-#include <Magnum/MeshTools/Compile.h>
-#include <Magnum/Trade/MeshData.h>
-
-
-#include <Magnum/Platform/GLContext.h>
-
+#include "Bolt.h"
 
 #include "imgui.h"
 #include "imgui_impl_sdl3.h"
@@ -44,90 +15,36 @@
 #include "../libs/emscripten/emscripten_mainloop_stub.h"
 #endif
 
-
-
-void main_loop()
-{
-    /*bool show_demo_window = true;
-    if (show_demo_window)
-        ImGui::ShowDemoWindow(&show_demo_window);
-    
-    ImGui::Begin("Window");
-
-    static float nine = 9;
-
-    ImGui::SliderFloat("Door", &nine, 0, 297);
-
-    if (ImGui::CollapsingHeader("Drawer"))
-    {
-
-        if (ImGui::Button("Chair"))
-        {
-            nine = 7;
-        }
-
-        static bool show_table_window = false;
-
-        if (ImGui::Button("Table"))
-        {
-            show_table_window = !show_table_window;
-        }
-
-
-        if (show_table_window)
-        {
-            ImGui::Begin("Window 2");
-            ImGui::Text("Hello");
-            ImGui::End();
-        }
-
-
-        static float col[3]{};
-        ImGui::ColorPicker3("Colour Edit", col);
-    }
-    ImGui::End();*/
-}
-
 using namespace Magnum;
 
-static Matrix4 gProjection;
-static Matrix4 gTransformation;
-
-// Main code
 int main(int, char**)
 {
-    // Setup SDL
-    // [If using SDL_MAIN_USE_CALLBACKS: all code below until the main loop starts would likely be your SDL_AppInit() function]
+    /* _ChatGPT_ Setup SDL. */
     if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD))
     {
         printf("Error: SDL_Init(): %s\n", SDL_GetError());
         return 1;
     }
 
-    // Decide GL+GLSL versions
 #if defined(IMGUI_IMPL_OPENGL_ES2)
-    // GL ES 2.0 + GLSL 100 (WebGL 1.0)
     const char* glsl_version = "#version 100";
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, 0);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
 #elif defined(IMGUI_IMPL_OPENGL_ES3)
-    // GL ES 3.0 + GLSL 300 es (WebGL 2.0)
     const char* glsl_version = "#version 300 es";
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, 0);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
 #elif defined(__APPLE__)
-    // GL 3.2 Core + GLSL 150
     const char* glsl_version = "#version 150";
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG); // Always required on Mac
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_FORWARD_COMPATIBLE_FLAG);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
 #else
-    // GL 3.0 + GLSL 130
     const char* glsl_version = "#version 130";
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, 0);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
@@ -135,20 +52,26 @@ int main(int, char**)
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
 #endif
 
-    // Create window with graphics context
+    /* _ChatGPT_ Create window with graphics context. */
     SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
     SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
+
     float main_scale = SDL_GetDisplayContentScale(SDL_GetPrimaryDisplay());
-    SDL_WindowFlags window_flags = SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN | SDL_WINDOW_HIGH_PIXEL_DENSITY;
-    SDL_Window* window = SDL_CreateWindow("Dear ImGui SDL3+OpenGL3 example", (int)(1280 * main_scale), (int)(800 * main_scale), window_flags);
-    if (window == nullptr)
+    SDL_WindowFlags window_flags =
+        SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN | SDL_WINDOW_HIGH_PIXEL_DENSITY;
+
+    SDL_Window* window = SDL_CreateWindow("SDL3 + OpenGL + Magnum + ImGui",
+        (int)(1280 * main_scale), (int)(800 * main_scale), window_flags);
+
+    if (!window)
     {
         printf("Error: SDL_CreateWindow(): %s\n", SDL_GetError());
         return 1;
     }
+
     SDL_GLContext gl_context = SDL_GL_CreateContext(window);
-    if (gl_context == nullptr)
+    if (!gl_context)
     {
         printf("Error: SDL_GL_CreateContext(): %s\n", SDL_GetError());
         return 1;
@@ -156,91 +79,40 @@ int main(int, char**)
 
     SDL_GL_MakeCurrent(window, gl_context);
 
+    /* _ChatGPT_ Tell Magnum that a GL context is current. */
     Platform::GLContext context{};
-    //context = Platform::GLContext();        // now Magnum knows the GL context is current
 
-
-    SDL_GL_SetSwapInterval(1); // Enable vsync
+    SDL_GL_SetSwapInterval(1);
     SDL_SetWindowPosition(window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
     SDL_ShowWindow(window);
 
-    GL::Mesh cubeMesh = MeshTools::compile(Primitives::cubeSolid());
-    Shaders::Phong cubeShader;
+    Bolt bolt;
+    bolt.init();
 
-    // --- Create a cube mesh ---
-    cubeShader
-        .setDiffuseColor(Magnum::Color4(0x66ccff))
-        .setSpecularColor(Magnum::Color4(0x000000))  // <= disables specular
-        .setShininess(1.0f);
-
-    gTransformation =
-        Matrix4::rotationY(Magnum::Deg(0.0)) *
-        Matrix4::rotationX(Magnum::Deg(0.0)) *
-        Matrix4::translation(Vector3::zAxis(-10.0f));
-
-    float aspect = 1280.0f / 800.0f;
-    gProjection = Matrix4::perspectiveProjection(
-        Magnum::Deg(60.0), aspect, 0.01f, 100.0f
-    );
-
-    // Setup Dear ImGui context
+    /* _ChatGPT_ Setup Dear ImGui context. */
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO(); (void)io;
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
 
-    // Setup Dear ImGui style
     ImGui::StyleColorsDark();
-    //ImGui::StyleColorsLight();
-
-    // Setup scaling
     ImGuiStyle& style = ImGui::GetStyle();
-    style.ScaleAllSizes(main_scale);        // Bake a fixed style scale. (until we have a solution for dynamic style scaling, changing this requires resetting Style + calling this again)
-    //style.FontScaleDpi = main_scale;        // Set initial font scale. (using io.ConfigDpiScaleFonts=true makes this unnecessary. We leave both here for documentation purpose)
+    style.ScaleAllSizes(main_scale);
 
-    // Setup Platform/Renderer backends
     ImGui_ImplSDL3_InitForOpenGL(window, gl_context);
     ImGui_ImplOpenGL3_Init(glsl_version);
 
-    // Load Fonts
-    // - If no fonts are loaded, dear imgui will use the default font. You can also load multiple fonts and use ImGui::PushFont()/PopFont() to select them.
-    // - AddFontFromFileTTF() will return the ImFont* so you can store it if you need to select the font among multiple.
-    // - If the file cannot be loaded, the function will return a nullptr. Please handle those errors in your application (e.g. use an assertion, or display an error and quit).
-    // - Use '#define IMGUI_ENABLE_FREETYPE' in your imconfig file to use Freetype for higher quality font rendering.
-    // - Read 'docs/FONTS.md' for more instructions and details. If you like the default font but want it to scale better, consider using the 'ProggyVector' from the same author!
-    // - Remember that in C/C++ if you want to include a backslash \ in a string literal you need to write a double backslash \\ !
-    // - Our Emscripten build process allows embedding fonts to be accessible at runtime from the "fonts/" folder. See Makefile.emscripten for details.
-    //style.FontSizeBase = 20.0f;
-    //io.Fonts->AddFontDefault();
-    //io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\segoeui.ttf");
-    //io.Fonts->AddFontFromFileTTF("../../misc/fonts/DroidSans.ttf");
-    //io.Fonts->AddFontFromFileTTF("../../misc/fonts/Roboto-Medium.ttf");
-    //io.Fonts->AddFontFromFileTTF("../../misc/fonts/Cousine-Regular.ttf");
-    //ImFont* font = io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf");
-    //IM_ASSERT(font != nullptr);
-
-    // Our state
-    
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
-    // Main loop
     bool done = false;
 #ifdef __EMSCRIPTEN__
-    // For an Emscripten build we are disabling file-system access, so let's not attempt to do a fopen() of the imgui.ini file.
-    // You may manually call LoadIniSettingsFromMemory() to load settings from your own storage.
     io.IniFilename = nullptr;
     EMSCRIPTEN_MAINLOOP_BEGIN
 #else
     while (!done)
 #endif
     {
-        // Poll and handle events (inputs, window resize, etc.)
-        // You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
-        // - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application, or clear/overwrite your copy of the mouse data.
-        // - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to your main application, or clear/overwrite your copy of the keyboard data.
-        // Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
-        // [If using SDL_MAIN_USE_CALLBACKS: call ImGui_ImplSDL3_ProcessEvent() from your SDL_AppEvent() function]
         SDL_Event event;
         while (SDL_PollEvent(&event))
         {
@@ -251,82 +123,40 @@ int main(int, char**)
                 done = true;
         }
 
-        // [If using SDL_MAIN_USE_CALLBACKS: all code below would likely be your SDL_AppIterate() function]
         if (SDL_GetWindowFlags(window) & SDL_WINDOW_MINIMIZED)
         {
             SDL_Delay(10);
             continue;
         }
 
-        // Start the Dear ImGui frame
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplSDL3_NewFrame();
         ImGui::NewFrame();
 
-        // 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
-        main_loop();
-        
-
-
-        int fbWidth, fbHeight;
+        int fbWidth = 0, fbHeight = 0;
         SDL_GetWindowSizeInPixels(window, &fbWidth, &fbHeight);
 
-        // Set Magnum framebuffer viewport
-        GL::defaultFramebuffer.setViewport({ {}, {fbWidth, fbHeight} });
+        /* _ChatGPT_ Keep Magnum camera projection correct for window size. */
+        bolt.resize({ fbWidth, fbHeight });
 
-        // Set OpenGL viewport to match
+        GL::defaultFramebuffer.setViewport({ {}, {fbWidth, fbHeight} });
         glViewport(0, 0, fbWidth, fbHeight);
 
-        glClearColor(clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w);
-        glClear(GL_COLOR_BUFFER_BIT);
-        // --- Clear using Magnum ---
-        GL::defaultFramebuffer.clear(GL::FramebufferClear::Color |
-            GL::FramebufferClear::Depth);
+        glClearColor(clear_color.x * clear_color.w, clear_color.y * clear_color.w,
+            clear_color.z * clear_color.w, clear_color.w);
 
-        // --- Render 3D Cube ---
-        GL::Renderer::enable(GL::Renderer::Feature::DepthTest);
-        GL::Renderer::enable(GL::Renderer::Feature::FaceCulling);
+        GL::defaultFramebuffer.clear(GL::FramebufferClear::Color | GL::FramebufferClear::Depth);
 
-        Matrix4 base =
-            Matrix4::rotationX(Magnum::Deg(0.0f)) *
-            Matrix4::translation(Vector3::zAxis(-10.0f));
+        bolt.drawFrame();
 
-        static float cube_angle_y = 0;
-        static float cube_angle_x = 0;
-        static float cube_angle_zoom = 1.0f;
-        ImGui::Begin("Cube Options");
-        ImGui::SliderFloat("Rotation Y", &cube_angle_y, 0, 360);
-        ImGui::SliderFloat("Rotation X", &cube_angle_x, 0, 360);
-        ImGui::SliderFloat("Zoom", &cube_angle_zoom, 0, 5.0f);
-        ImGui::End();
-
-        Matrix4 spinningTransform =
-            base
-            * Matrix4::rotationY(Magnum::Deg(cube_angle_y))
-            * Matrix4::rotationX(Magnum::Deg(cube_angle_x))
-            * Matrix4::scaling(Magnum::Vector3(cube_angle_zoom));
-
-        cubeShader
-            .setDiffuseColor(Magnum::Color4(0x66ccff))
-            .setLightPosition({ 3.0f, 5.0f, 8.0f })
-            .setTransformationMatrix(spinningTransform)
-            .setProjectionMatrix(gProjection)
-            .draw(cubeMesh);
-
-        // Rendering
         ImGui::Render();
-
-        // --- Now draw ImGui on top ---
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-
         SDL_GL_SwapWindow(window);
     }
 #ifdef __EMSCRIPTEN__
     EMSCRIPTEN_MAINLOOP_END;
 #endif
 
-    // Cleanup
-    // [If using SDL_MAIN_USE_CALLBACKS: all code below would likely be your SDL_AppQuit() function]
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplSDL3_Shutdown();
     ImGui::DestroyContext();
@@ -334,6 +164,5 @@ int main(int, char**)
     SDL_GL_DestroyContext(gl_context);
     SDL_DestroyWindow(window);
     SDL_Quit();
-
     return 0;
 }
